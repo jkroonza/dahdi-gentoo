@@ -1,0 +1,99 @@
+diff -rbu jnet-dahdi-drivers-1.0.14.a/cwain/cwain.c jnet-dahdi-drivers-1.0.14.b/cwain/cwain.c
+--- a/drivers/dahdi/cwain.c	2012-04-13 19:21:07.000000000 +0200
++++ b/drivers/dahdi/cwain.c	2019-12-06 16:35:34.344559113 +0200
+@@ -1529,7 +1529,7 @@
+     return 0;
+ }
+ 
+-DAHDI_IRQ_HANDLER(cwain_dummy_interrupt) {
++static irqreturn_t cwain_dummy_interrupt(int irq, void *dev_id) {
+     struct dahdi_cwain_card *cwaintmp = dev_id;
+     if (!cwaintmp) {
+ 	return IRQ_NONE;
+@@ -1540,7 +1540,7 @@
+ }
+ 
+ 
+-DAHDI_IRQ_HANDLER(cwain_interrupt) {
++static irqreturn_t cwain_interrupt(int irq, void *dev_id) {
+     struct dahdi_cwain_card *cwaintmp = dev_id;
+     unsigned char status, status2, status_tmp, irq_misc, irq_misc2 = 0;
+     unsigned long flags;
+@@ -2160,16 +2160,16 @@
+     cwaintmp->irq = cwaintmp->span[0]->irq;
+     
+     if (cwaintmp->spans == 2) {
+-	if (request_irq(cwaintmp->irq, cwain_interrupt, DAHDI_IRQ_SHARED, "cwain2", cwaintmp)) {
++	if (request_irq(cwaintmp->irq, cwain_interrupt, IRQF_SHARED, "cwain2", cwaintmp)) {
+     	    printk(KERN_WARNING "cwain: unable to register irq\n");
+ 	    return -1;
+ 	}
+-	if (request_irq(cwaintmp->span[1]->irq, cwain_dummy_interrupt, DAHDI_IRQ_SHARED, "cwaindummy", cwaintmp)) {
++	if (request_irq(cwaintmp->span[1]->irq, cwain_dummy_interrupt, IRQF_SHARED, "cwaindummy", cwaintmp)) {
+     	    printk(KERN_WARNING "cwain: unable to register irq\n");
+ 	    return -1;
+ 	}
+     } else {
+-	if (request_irq(cwaintmp->irq, cwain_interrupt, DAHDI_IRQ_SHARED, "cwain", cwaintmp)) {
++	if (request_irq(cwaintmp->irq, cwain_interrupt, IRQF_SHARED, "cwain", cwaintmp)) {
+     	    printk(KERN_WARNING "cwain: unable to register irq\n");
+ 	    return -1;
+ 	}
+diff -rbu jnet-dahdi-drivers-1.0.14.a/qozap/qozap.c jnet-dahdi-drivers-1.0.14.b/qozap/qozap.c
+--- a/drivers/dahdi/qozap.c	2012-04-13 19:21:07.000000000 +0200
++++ b/drivers/dahdi/qozap.c	2019-12-06 16:37:29.594953439 +0200
+@@ -1054,7 +1054,7 @@
+     }
+ }
+ 
+-DAHDI_IRQ_HANDLER(qoz_interrupt) {
++static irqreturn_t qoz_interrupt(int irq, void *dev_id) {
+     struct qoz_card *qoztmp = dev_id;
+     unsigned long flags;
+     unsigned char irq_misc,irq_sci,status,l1state,irq_foview,fi;
+@@ -1858,7 +1858,7 @@
+ 	    return -EIO;
+ 	}
+ 	
+-	if (request_irq(qoztmp->irq, qoz_interrupt, DAHDI_IRQ_SHARED, "qozap", qoztmp)) {
++	if (request_irq(qoztmp->irq, qoz_interrupt, IRQF_SHARED, "qozap", qoztmp)) {
+ 	    printk(KERN_WARNING "qozap: unable to register irq\n");
+ 	    kfree(qoztmp);
+ 	    pci_disable_device(tmp);
+diff -rbu jnet-dahdi-drivers-1.0.14.a/ztgsm/ztgsm.c jnet-dahdi-drivers-1.0.14.b/ztgsm/ztgsm.c
+--- a/drivers/dahdi/ztgsm.c	2012-04-13 19:21:07.000000000 +0200
++++ b/drivers/dahdi/ztgsm.c	2019-12-06 16:41:44.375832727 +0200
+@@ -777,7 +777,7 @@
+ 
+ 
+ 
+-DAHDI_IRQ_HANDLER(ztgsm_interrupt) {
++static irqreturn_t ztgsm_interrupt(int irq, void *dev_id) {
+     struct ztgsm_card *gsmtmp = dev_id;
+     unsigned int ser_status = 0;
+     unsigned char mods = 0;
+@@ -1168,14 +1168,12 @@
+ 	gsmtmp->iomem_size = (tmp->resource[1].end - tmp->resource[1].start + 1);
+ 	printk(KERN_INFO "ztgsm: iomem at %lx size %ld\n", gsmtmp->pci_io_phys, gsmtmp->iomem_size);
+ 
+-	if (check_mem_region(gsmtmp->pci_io_phys, gsmtmp->iomem_size)) {
++	if (request_mem_region(gsmtmp->pci_io_phys, gsmtmp->iomem_size, "ztgsm")) {
+ 	    printk(KERN_INFO "ztgsm: iomem already in use!\n");;
+ 	    pci_disable_device(tmp);
+ 	    return -EBUSY;
+ 	}
+ 	
+-	request_mem_region(gsmtmp->pci_io_phys, gsmtmp->iomem_size, "ztgsm");
+-
+ 	gsmtmp->pci_io = ioremap(gsmtmp->pci_io_phys, gsmtmp->iomem_size); /* 8kb */
+ 
+ 	gsmtmp->ioport = tmp->resource[0].start;
+@@ -1194,7 +1192,7 @@
+ 	    return -EIO;
+ 	}
+ 	
+-	if (request_irq(gsmtmp->irq, ztgsm_interrupt, DAHDI_IRQ_SHARED, "ztgsm", gsmtmp)) {
++	if (request_irq(gsmtmp->irq, ztgsm_interrupt, IRQF_SHARED, "ztgsm", gsmtmp)) {
+ 	    printk(KERN_WARNING "ztgsm: unable to register irq\n");
+ 	    release_region(gsmtmp->ioport, 0x100);
+ 	    release_mem_region(gsmtmp->pci_io_phys, gsmtmp->iomem_size);
