@@ -57,10 +57,10 @@ else
 	git tag "${tag}"
 fi
 
-( cd "${variant}" && git archive "${tag}" --prefix="${tag}/" --format tgz -9 ) > "${tag}.tar.gz" || exit 1
+( cd "${variant}" && git archive "${tag}" --prefix="${tag}/" ) | bzip2 -9 > "${tag}.tar.bz2" || exit 1
 
-echo "Created archive ${tag}.tar.gz"
+echo "Created archive ${tag}.tar.bz2"
 
-[ -n "${upstream}" ] && rsync -av "${tag}.tar.gz" "${upstream}/"
+[ -n "${upstream}" ] && rsync -av "${tag}.tar.bz2" "${upstream}/"
 
 exit 0
