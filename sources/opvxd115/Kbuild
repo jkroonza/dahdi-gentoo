@@ -1,0 +1,32 @@
+obj-$(DAHDI_BUILD_ALL)$(CONFIG_DAHDI_OPVXD115) += opvxd115.o
+
+FIRM_DIR	:= ../firmware
+
+EXTRA_CFLAGS += -I$(src)/.. $(shell $(src)/../oct612x/octasic-helper cflags $(src)/../oct612x) -Wno-undef
+
+ifeq ($(HOTPLUG_FIRMWARE),yes)
+  EXTRA_CFLAGS+=-DHOTPLUG_FIRMWARE
+endif
+
+opvxd115-objs := base.o vpm450m.o
+
+DAHDI_KERNEL_H_NAME:=kernel.h
+DAHDI_KERNEL_H_PATH:=$(DAHDI_INCLUDE)/dahdi/$(DAHDI_KERNEL_H_NAME)
+ifneq ($(DAHDI_KERNEL_H_PATH),)
+        DAHDI_SPAN_MODULE:=$(shell if grep -C 5 "struct dahdi_span {" $(DAHDI_KERNEL_H_PATH) | grep -q "struct module \*owner"; then echo "yes"; else echo "no"; fi)
+        DAHDI_SPAN_OPS:=$(shell if grep -q "struct dahdi_span_ops {" $(DAHDI_KERNEL_H_PATH); then echo "yes"; else echo "no"; fi)
+        ifeq ($(DAHDI_SPAN_MODULE),yes)
+                EXTRA_CFLAGS+=-DDAHDI_SPAN_MODULE
+        else
+                ifeq ($(DAHDI_SPAN_OPS),yes)
+                        EXTRA_CFLAGS+=-DDAHDI_SPAN_OPS
+                endif
+        endif
+endif
+
+ifneq ($(HOTPLUG_FIRMWARE),yes)
+opvxd115-objs += $(FIRM_DIR)/dahdi-fw-oct6114-032.o
+endif
+
+$(obj)/$(FIRM_DIR)/dahdi-fw-oct6114-032.o: $(obj)/base.o
+	$(MAKE) -C $(obj)/$(FIRM_DIR) dahdi-fw-oct6114-032.o

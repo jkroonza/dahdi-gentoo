@@ -1,0 +1,26 @@
+obj-m += ap400.o
+
+EXTRA_CFLAGS := -I$(src)/.. 
+
+ap400-objs := ap400_drv.o
+
+# APEC_SUPPORT
+ECHO_FIRMWARE := $(wildcard $(src)/OCT61*.ima)
+ifneq ($(strip $(ECHO_FIRMWARE)),)
+	EXTRA_CFLAGS+=-DAPEC_SUPPORT $(shell $(src)/../oct612x/octasic-helper cflags $(src)/../oct612x) -Wno-undef
+	ap400-objs += apec.o $(shell $(src)/../oct612x/octasic-helper objects ../oct612x) firmware_oct6104e-64d.o firmware_oct6104e-128d.o
+endif
+
+$(obj)/apec.o: $(src)/apec.h $(src)/../oct612x/include/oct6100api/oct6100_api.h
+
+$(obj)/firmware_oct6104e-64d.o: $(src)/OCT6104E-64D.ima $(obj)/ap400_drv.o $(src)/../firmware/make_firmware_object
+	@echo Making firmware object file for $(notdir $<)
+	@cd $(src) && ../firmware/make_firmware_object $(notdir $<) $@ $(obj)/ap400_drv.o
+
+$(obj)/firmware_oct6104e-128d.o: $(src)/OCT6104E-128D.ima $(obj)/ap400_drv.o $(src)/../firmware/make_firmware_object
+	@echo Making firmware object file for $(notdir $<)
+	@cd $(src) && ../firmware/make_firmware_object $(notdir $<) $@ $(obj)/ap400_drv.o
+
+$(src)/../firmware/make_firmware_object:
+	make -C $(src)/../firmware make_firmware_object
+
