@@ -1,0 +1,66 @@
+#! /bin/bash
+
+progname="$0"
+variant="$1"
+version="$2"
+upstream="$3"
+
+usage()
+{
+	echo "USAGE: ${progname} variant version upstream"
+	echo "  variant is one of:"
+	echo "   - sources - the files we're adding to dahdi-linux (mostly non-digium code)"
+	echo "   - patches - the modifications we need against dahdi-linux."
+	echo "  version is the specific version you'd like to tag/release."
+	echo "If the version doesn't exist yet, the script will confirm if you want"
+	echo "to tag a new one, if it does, confirm to use it (providing some basic"
+	echo "information)."
+	echo "Once this has been confirmed, the archive will be created and if"
+	echo "upstream is specified, the archive will also be rsync'ed to this location."
+	echo "Sample usage:  ${progname} src 0.0.0-r3-v1 me@myserver:path/to/release_location/"
+}
+
+error()
+{
+	local ec="$1"
+	shift
+	echo "$@" >&2
+	echo >&2
+	usage >&2
+	exit $ec
+}
+
+yesno()
+{
+	local ans
+	while true; do
+		read -p "$1 [yn]? " ans
+		[[ $ans = [Yy]* ]] && return 0
+		[[ $and = [Nn]* ]] && return 1
+		echo "Invalid reply, please try again ..." >&2
+	done
+}
+
+[[ $# -lt 2 ]] && error 1 "${progname} require at least two arguments."
+[[ $# -gt 3 ]] && error 1 "${progname} accepts at most three arguments."
+[[ "${variant}" != "sources" ]] && [[ "${variant}" != "patches" ]] && error 1 "variant must be one of sources or patches"
+[[ "${version}" =~ ^[1-9][0-9]*([.][0-9]+){2}(-r[1-9][0-9]*)?(-rc[1-9][0-9]*)?$ ]] || error 1 "Version must be of the format a.b.c(-rX)(-rcY) where a.b.c is the upstream dahdi-linux version the release is made against/for, and rX the ebuild revision we're releasing for, and rcY is used for preparing the builds, should never be in a final version (eg, 3.1.0-r4-rc1)."
+
+tag="gentoo-dahdi-${variant}-${version}"
+
+echo "Effective tag: ${tag}"
+
+if git rev-parse "${tag}" &>/dev/null; then
+	yesno "This is an existing tag, re-use" || exit 2
+else
+	yesno "This is not an exiting tag, create" || exit 2
+	git tag "${tag}"
+fi
+
+( cd "${variant}" && git archive "${tag}" --prefix="${tag}/" --format tgz -9 ) > "${tag}.tar.gz" || exit 1
+
+echo "Created archive ${tag}.tar.gz"
+
+[ -n "${upstream}" ] && rsync -av "${tag}.tar.gz" "${upstream}/"
+
+exit 0
