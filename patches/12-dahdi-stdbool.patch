@@ -1,0 +1,162 @@
+From 2d3e45793add69455df13df0719f8c6d855dbab2 Mon Sep 17 00:00:00 2001
+From: Jaco Kroon <jaco@uls.co.za>
+Date: Fri, 10 Jun 2022 10:55:01 +0200
+Subject: [PATCH] Do not include stdbool.h which is a userspace header.
+
+Signed-off-by: Jaco Kroon <jaco@uls.co.za>
+---
+ drivers/dahdi/dahdi-base.c      | 2 --
+ drivers/dahdi/voicebus/vpmoct.h | 2 --
+ drivers/dahdi/wcaxx-base.c      | 3 ---
+ drivers/dahdi/wct4xxp/base.c    | 1 -
+ drivers/dahdi/wct4xxp/vpm450m.c | 1 -
+ drivers/dahdi/wctc4xxp/base.c   | 2 --
+ drivers/dahdi/wctdm24xxp/base.c | 2 --
+ drivers/dahdi/wcte13xp-base.c   | 1 -
+ drivers/dahdi/wcte43x-base.c    | 1 -
+ drivers/dahdi/wcxb.c            | 2 --
+ drivers/dahdi/wcxb_spi.h        | 1 -
+ 11 files changed, 18 deletions(-)
+
+diff --git a/drivers/dahdi/dahdi-base.c b/drivers/dahdi/dahdi-base.c
+index bcd6147..ee4fc9e 100644
+--- a/drivers/dahdi/dahdi-base.c
++++ b/drivers/dahdi/dahdi-base.c
+@@ -86,8 +86,6 @@
+ 
+ #include "hpec/hpec_user.h"
+ 
+-#include <stdbool.h>
+-
+ #if defined(EMPULSE) && defined(EMFLASH)
+ #error "You cannot define both EMPULSE and EMFLASH"
+ #endif
+diff --git a/drivers/dahdi/voicebus/vpmoct.h b/drivers/dahdi/voicebus/vpmoct.h
+index cb55826..b4ca658 100644
+--- a/drivers/dahdi/voicebus/vpmoct.h
++++ b/drivers/dahdi/voicebus/vpmoct.h
+@@ -30,8 +30,6 @@
+ #include <linux/timer.h>
+ #include "dahdi/kernel.h"
+ 
+-#include <stdbool.h>
+-
+ #define VPMOCT_FIRM_HEADER_LEN 32
+ #define VPMOCT_BOOT_RAM_LEN 128
+ #define VPMOCT_FLASH_BUF_SECTIONS 4
+diff --git a/drivers/dahdi/wcaxx-base.c b/drivers/dahdi/wcaxx-base.c
+index b934960..915fe57 100644
+--- a/drivers/dahdi/wcaxx-base.c
++++ b/drivers/dahdi/wcaxx-base.c
+@@ -34,9 +34,6 @@
+ #include <linux/firmware.h>
+ #include <linux/crc32.h>
+ 
+-#include <stdbool.h>
+-
+-
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 30)
+ /* Define this if you would like to load the modules in parallel.  While this
+  * can speed up loads when multiple cards handled by this driver are installed,
+diff --git a/drivers/dahdi/wct4xxp/base.c b/drivers/dahdi/wct4xxp/base.c
+index 7089ec1..943b469 100644
+--- a/drivers/dahdi/wct4xxp/base.c
++++ b/drivers/dahdi/wct4xxp/base.c
+@@ -42,7 +42,6 @@
+ #include <linux/crc32.h>
+ #include <linux/slab.h>
+ 
+-#include <stdbool.h>
+ #include <dahdi/kernel.h>
+ 
+ #include "wct4xxp.h"
+diff --git a/drivers/dahdi/wct4xxp/vpm450m.c b/drivers/dahdi/wct4xxp/vpm450m.c
+index 82a0463..38c68ab 100644
+--- a/drivers/dahdi/wct4xxp/vpm450m.c
++++ b/drivers/dahdi/wct4xxp/vpm450m.c
+@@ -28,7 +28,6 @@
+ #include <linux/version.h>
+ 
+ #include <dahdi/kernel.h>
+-#include <stdbool.h>
+ 
+ #include "vpm450m.h"
+ #include <oct612x.h>
+diff --git a/drivers/dahdi/wctc4xxp/base.c b/drivers/dahdi/wctc4xxp/base.c
+index 3bd56d1..fbfbd0a 100644
+--- a/drivers/dahdi/wctc4xxp/base.c
++++ b/drivers/dahdi/wctc4xxp/base.c
+@@ -39,8 +39,6 @@
+ #include <linux/etherdevice.h>
+ #include <linux/timer.h>
+ 
+-#include <stdbool.h>
+-
+ #include <dahdi/kernel.h>
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+diff --git a/drivers/dahdi/wctdm24xxp/base.c b/drivers/dahdi/wctdm24xxp/base.c
+index 16bf384..11c2b88 100644
+--- a/drivers/dahdi/wctdm24xxp/base.c
++++ b/drivers/dahdi/wctdm24xxp/base.c
+@@ -54,8 +54,6 @@ Tx Gain - W/Pre-Emphasis: -23.99 to 0.00 db
+ #include <linux/crc32.h>
+ #include <linux/slab.h>
+ 
+-#include <stdbool.h>
+-
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 30)
+ /* Define this if you would like to load the modules in parallel.  While this
+  * can speed up loads when multiple cards handled by this driver are installed,
+diff --git a/drivers/dahdi/wcte13xp-base.c b/drivers/dahdi/wcte13xp-base.c
+index b5f8043..69f7099 100644
+--- a/drivers/dahdi/wcte13xp-base.c
++++ b/drivers/dahdi/wcte13xp-base.c
+@@ -35,7 +35,6 @@
+ #include <linux/sched.h>
+ #include <linux/crc32.h>
+ 
+-#include <stdbool.h>
+ #include <dahdi/kernel.h>
+ 
+ #include "wct4xxp/wct4xxp.h"	/* For certain definitions */
+diff --git a/drivers/dahdi/wcte43x-base.c b/drivers/dahdi/wcte43x-base.c
+index 45b0f6c..d164a69 100644
+--- a/drivers/dahdi/wcte43x-base.c
++++ b/drivers/dahdi/wcte43x-base.c
+@@ -43,7 +43,6 @@
+ #include <linux/firmware.h>
+ #include <oct612x.h>
+ 
+-#include <stdbool.h>
+ #include <dahdi/kernel.h>
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+diff --git a/drivers/dahdi/wcxb.c b/drivers/dahdi/wcxb.c
+index 122f9d3..d6318e2 100644
+--- a/drivers/dahdi/wcxb.c
++++ b/drivers/dahdi/wcxb.c
+@@ -36,8 +36,6 @@
+ 
+ #include <dahdi/kernel.h>
+ 
+-#include <stdbool.h>
+-
+ #include "wcxb.h"
+ #include "wcxb_spi.h"
+ #include "wcxb_flash.h"
+diff --git a/drivers/dahdi/wcxb_spi.h b/drivers/dahdi/wcxb_spi.h
+index 418cd77..4575f14 100644
+--- a/drivers/dahdi/wcxb_spi.h
++++ b/drivers/dahdi/wcxb_spi.h
+@@ -24,7 +24,6 @@
+ #define __WCXB_SPI_H
+ 
+ #include <linux/spi/spi.h>
+-#include <stdbool.h>
+ 
+ struct wcxb_spi_transfer {
+ 	const void	*tx_buf;
+-- 
+2.35.1
+
