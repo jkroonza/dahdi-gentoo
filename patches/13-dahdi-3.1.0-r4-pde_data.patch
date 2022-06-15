@@ -1,45 +1,27 @@
-From f65d8c14da6071e1cfbaefe748ee51f594cfbe5b Mon Sep 17 00:00:00 2001
+From 4f4c617237d0a5891410537ab770e7a0bc2b1652 Mon Sep 17 00:00:00 2001
 From: Jaco Kroon <jaco@uls.co.za>
 Date: Fri, 10 Jun 2022 13:07:37 +0200
 Subject: [PATCH] Minimal PDE_DATA patch.
 
 ---
- include/dahdi/kernel.h | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+ include/dahdi/kernel.h | 4 ++++
+ 1 file changed, 4 insertions(+)
 
 diff --git a/include/dahdi/kernel.h b/include/dahdi/kernel.h
-index 22b9b66..c8cc604 100644
+index 22b9b66..98841a4 100644
 --- a/include/dahdi/kernel.h
 +++ b/include/dahdi/kernel.h
-@@ -1457,7 +1457,7 @@ static inline s64 ktime_ms_delta(const ktime_t later, const ktime_t earlier)
- #if RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(6, 5)
- #ifdef CONFIG_PROC_FS
- #include <linux/proc_fs.h>
--static inline void *PDE_DATA(const struct inode *inode)
-+static inline void *pde_data(const struct inode *inode)
- {
- 	return PDE(inode)->data;
- }
-@@ -1466,7 +1466,7 @@ static inline void *PDE_DATA(const struct inode *inode)
- #else
- #ifdef CONFIG_PROC_FS
- #include <linux/proc_fs.h>
--static inline void *PDE_DATA(const struct inode *inode)
-+static inline void *pde_data(const struct inode *inode)
- {
- 	return PDE(inode)->data;
- }
-@@ -1491,6 +1491,10 @@ static inline void *PDE_DATA(const struct inode *inode)
+@@ -62,6 +62,10 @@
+ #include <linux/pci-aspm.h>
+ #endif
  
- #endif /* 4.15.0 */
- 
-+#ifndef PDE_DATA
-+#define PDE_DATA(x)	pde_data(x)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
++#define PDE_DATA(i)	pde_data(i)
 +#endif
 +
- #ifndef dahdi_ktime_equal
- static inline int dahdi_ktime_equal(const ktime_t cmp1, const ktime_t cmp2)
- {
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
+ #define HAVE_NET_DEVICE_OPS
+ #endif
 -- 
 2.35.1
 
