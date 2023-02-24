@@ -2748,7 +2748,7 @@ static int __devinit wctdm_init_one(struct pci_dev *pdev, const struct pci_devic
 
 			/* Allocate enough memory for two zt chunks, receive and transmit.  Each sample uses
 			   8 bits.  */
-			wc->writechunk = pci_alloc_consistent(pdev, DAHDI_MAX_CHUNKSIZE * (MAX_NUM_CARDS+NUM_FLAG) * 2 * 2, &wc->writedma);
+			wc->writechunk = dma_alloc_coherent(&pdev->dev, DAHDI_MAX_CHUNKSIZE * (MAX_NUM_CARDS+NUM_FLAG) * 2 * 2, &wc->writedma, GFP_ATOMIC);
 			if (!wc->writechunk) {
 				printk(KERN_NOTICE "opvxa1200: Unable to allocate DMA-able memory\n");
 				if (wc->freeregion & 0x01)
@@ -2796,7 +2796,7 @@ static int __devinit wctdm_init_one(struct pci_dev *pdev, const struct pci_devic
 					release_mem_region(wc->mem_region, wc->mem_len);
 					iounmap((void *)wc->mem32);
 				}
-				pci_free_consistent(pdev,  DAHDI_MAX_CHUNKSIZE * (MAX_NUM_CARDS+NUM_FLAG) * 2 * 2, (void *)wc->writechunk, wc->writedma);
+				dma_free_coherent(&pdev->dev,  DAHDI_MAX_CHUNKSIZE * (MAX_NUM_CARDS+NUM_FLAG) * 2 * 2, (void *)wc->writechunk, wc->writedma);
 				pci_set_drvdata(pdev, NULL);
 				kfree(wc);
 				return -EIO;
@@ -2817,7 +2817,7 @@ static int __devinit wctdm_init_one(struct pci_dev *pdev, const struct pci_devic
 					release_mem_region(wc->mem_region, wc->mem_len);
 					iounmap((void *)wc->mem32);
 				}
-				pci_free_consistent(pdev,  DAHDI_MAX_CHUNKSIZE * (MAX_NUM_CARDS+NUM_FLAG) * 2 * 2, (void *)wc->writechunk, wc->writedma);
+				dma_free_coherent(&pdev->dev,  DAHDI_MAX_CHUNKSIZE * (MAX_NUM_CARDS+NUM_FLAG) * 2 * 2, (void *)wc->writechunk, wc->writedma);
 				pci_set_drvdata(pdev, NULL);
 				dahdi_unregister_device(wc->ddev);
 				kfree(wc->ddev->location);
@@ -2947,7 +2947,7 @@ static void __devexit wctdm_remove_one(struct pci_dev *pdev)
 		wctdm_disable_interrupts(wc);
 		
 		/* Immediately free resources */
-		pci_free_consistent(pdev,  DAHDI_MAX_CHUNKSIZE * (MAX_NUM_CARDS+NUM_FLAG) * 2 * 2, (void *)wc->writechunk, wc->writedma);
+		dma_free_coherent(&pdev->dev,  DAHDI_MAX_CHUNKSIZE * (MAX_NUM_CARDS+NUM_FLAG) * 2 * 2, (void *)wc->writechunk, wc->writedma);
 		free_irq(pdev->irq, wc);
 
 		/* Reset PCI chip and registers */

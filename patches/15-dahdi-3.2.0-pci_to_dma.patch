@@ -1,0 +1,200 @@
+From 51d6d472e694f9b1c8fecf81f8b97191a3fc1500 Mon Sep 17 00:00:00 2001
+From: Jaco Kroon <jaco@uls.co.za>
+Date: Fri, 24 Feb 2023 10:40:06 +0200
+Subject: [PATCH] Update use of long-deprecated pci_ dma API code to the more
+ generic dma_ API.
+
+I can trace back dma_ to at least kernel 3.2 and I've found mention of
+this generic API around 2002 already, so this should work on some really
+old kernels too.
+
+The only question is whether all uses actually require GFP_ATOMIC, but
+since pci_alloc_consistent used that, just stick with it as I don't know
+how to verify this.
+
+Signed-off-by: Jaco Kroon <jaco@uls.co.za>
+---
+ drivers/dahdi/voicebus/voicebus.c | 16 ++++++++--------
+ drivers/dahdi/wct4xxp/base.c      | 10 +++++-----
+ drivers/dahdi/wctc4xxp/base.c     | 18 +++++++++---------
+ 3 files changed, 22 insertions(+), 22 deletions(-)
+
+diff --git a/drivers/dahdi/voicebus/voicebus.c b/drivers/dahdi/voicebus/voicebus.c
+index 8a1f7a6..6193461 100644
+--- a/drivers/dahdi/voicebus/voicebus.c
++++ b/drivers/dahdi/voicebus/voicebus.c
+@@ -260,8 +260,8 @@ vb_initialize_descriptors(struct voicebus *vb, struct voicebus_descriptor_list *
+ 		dl->padding = 0;
+ 	}
+ 
+-	dl->desc = pci_alloc_consistent(vb->pdev,
+-		(sizeof(*d) + dl->padding) * DRING_SIZE, &dl->desc_dma);
++	dl->desc = dma_alloc_coherent(&vb->pdev->dev,
++		(sizeof(*d) + dl->padding) * DRING_SIZE, &dl->desc_dma, GFP_ATOMIC);
+ 	if (!dl->desc)
+ 		return -ENOMEM;
+ 
+@@ -311,9 +311,9 @@ vb_initialize_tx_descriptors(struct voicebus *vb)
+ 		dl->padding = 0;
+ 	}
+ 
+-	dl->desc = pci_alloc_consistent(vb->pdev,
++	dl->desc = dma_alloc_coherent(&vb->pdev->dev,
+ 					(sizeof(*d) + dl->padding) *
+-					DRING_SIZE, &dl->desc_dma);
++					DRING_SIZE, &dl->desc_dma, GFP_ATOMIC);
+ 	if (!dl->desc)
+ 		return -ENOMEM;
+ 
+@@ -544,8 +544,8 @@ vb_free_descriptors(struct voicebus *vb, struct voicebus_descriptor_list *dl)
+ 		return;
+ 	}
+ 	vb_cleanup_descriptors(vb, dl);
+-	pci_free_consistent(
+-		vb->pdev,
++	dma_free_coherent(
++		&vb->pdev->dev,
+ 		(sizeof(struct voicebus_descriptor)+dl->padding)*DRING_SIZE,
+ 		dl->desc, dl->desc_dma);
+ 	while (!list_empty(&vb->free_rx)) {
+@@ -1783,7 +1783,7 @@ __voicebus_init(struct voicebus *vb, const char *board_name,
+ 	/* ----------------------------------------------------------------
+ 	   Configure the hardware / kernel module interfaces.
+ 	   ---------------------------------------------------------------- */
+-	if (pci_set_dma_mask(vb->pdev, DMA_BIT_MASK(32))) {
++	if (dma_set_mask(&vb->pdev->dev, DMA_BIT_MASK(32))) {
+ 		dev_err(&vb->pdev->dev, "No suitable DMA available.\n");
+ 		goto cleanup;
+ 	}
+@@ -1826,7 +1826,7 @@ __voicebus_init(struct voicebus *vb, const char *board_name,
+ 	/* ----------------------------------------------------------------
+ 	   Configure the hardware interface.
+ 	   ---------------------------------------------------------------- */
+-	if (pci_set_dma_mask(vb->pdev, DMA_BIT_MASK(32))) {
++	if (dma_set_mask(&vb->pdev->dev, DMA_BIT_MASK(32))) {
+ 		dev_warn(&vb->pdev->dev, "No suitable DMA available.\n");
+ 		goto cleanup;
+ 	}
+diff --git a/drivers/dahdi/wct4xxp/base.c b/drivers/dahdi/wct4xxp/base.c
+index 47429b8..2a2d4de 100644
+--- a/drivers/dahdi/wct4xxp/base.c
++++ b/drivers/dahdi/wct4xxp/base.c
+@@ -3861,8 +3861,8 @@ static int t4_allocate_buffers(struct t4 *wc, int numbufs,
+ 	dma_addr_t writedma;
+ 
+ 	/* 32 channels, Double-buffer, Read/Write, 4 spans */
+-	alloc = pci_alloc_consistent(wc->dev, numbufs * T4_BASE_SIZE(wc) * 2,
+-				     &writedma);
++	alloc = dma_alloc_coherent(&wc->dev->dev, numbufs * T4_BASE_SIZE(wc) * 2,
++				     &writedma, GFP_ATOMIC);
+ 
+ 	if (!alloc) {
+ 		dev_notice(&wc->dev->dev, "wct%dxxp: Unable to allocate "
+@@ -3940,7 +3940,7 @@ static void t4_increase_latency(struct t4 *wc, int newlatency)
+ 
+ 	spin_unlock_irqrestore(&wc->reglock, flags);
+ 
+-	pci_free_consistent(wc->dev, T4_BASE_SIZE(wc) * oldbufs * 2,
++	dma_free_coherent(&wc->dev->dev, T4_BASE_SIZE(wc) * oldbufs * 2,
+ 			    oldalloc, oldaddr);
+ 
+ 	dev_info(&wc->dev->dev, "Increased latency to %d\n", newlatency);
+@@ -5134,7 +5134,7 @@ t4_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
+ 		 * up first */
+ 		pci_iounmap(wc->dev, wc->membase);
+ 		pci_release_regions(wc->dev);
+-		pci_free_consistent(wc->dev, T4_BASE_SIZE(wc) * wc->numbufs * 2,
++		dma_free_coherent(&wc->dev->dev, T4_BASE_SIZE(wc) * wc->numbufs * 2,
+ 			    wc->writechunk, wc->writedma);
+ 		pci_set_drvdata(wc->dev, NULL);
+ 		free_wc(wc);
+@@ -5314,7 +5314,7 @@ static void _t4_remove_one(struct t4 *wc)
+ 	pci_release_regions(wc->dev);
+ 	
+ 	/* Immediately free resources */
+-	pci_free_consistent(wc->dev, T4_BASE_SIZE(wc) * wc->numbufs * 2,
++	dma_free_coherent(&wc->dev->dev, T4_BASE_SIZE(wc) * wc->numbufs * 2,
+ 			    wc->writechunk, wc->writedma);
+ 	
+ 	order_index[wc->order]--;
+diff --git a/drivers/dahdi/wctc4xxp/base.c b/drivers/dahdi/wctc4xxp/base.c
+index ec6fc43..bc389ad 100644
+--- a/drivers/dahdi/wctc4xxp/base.c
++++ b/drivers/dahdi/wctc4xxp/base.c
+@@ -827,8 +827,8 @@ wctc4xxp_initialize_descriptor_ring(struct pci_dev *pdev,
+ 	if (!dr->pending)
+ 		return -ENOMEM;
+ 
+-	dr->desc = pci_alloc_consistent(pdev,
+-			(sizeof(*d)+dr->padding)*dr->size, &dr->desc_dma);
++	dr->desc = dma_alloc_coherent(&pdev->dev,
++			(sizeof(*d)+dr->padding)*dr->size, &dr->desc_dma, GFP_ATOMIC);
+ 	if (!dr->desc) {
+ 		kfree(dr->pending);
+ 		return -ENOMEM;
+@@ -878,7 +878,7 @@ wctc4xxp_submit(struct wctc4xxp_descriptor_ring *dr, struct tcb *c)
+ 	}
+ 	d->des1 &= cpu_to_le32(~(BUFFER1_SIZE_MASK));
+ 	d->des1 |= cpu_to_le32(len & BUFFER1_SIZE_MASK);
+-	d->buffer1 = cpu_to_le32(pci_map_single(dr->pdev, c->data,
++	d->buffer1 = cpu_to_le32(dma_map_single(&dr->pdev->dev, c->data,
+ 			SFRAME_SIZE, dr->direction));
+ 
+ 	SET_OWNED(d); /* That's it until the hardware is done with it. */
+@@ -900,7 +900,7 @@ wctc4xxp_retrieve(struct wctc4xxp_descriptor_ring *dr)
+ 	spin_lock_irqsave(&dr->lock, flags);
+ 	d = wctc4xxp_descriptor(dr, head);
+ 	if (d->buffer1 && !OWNED(d)) {
+-		pci_unmap_single(dr->pdev, le32_to_cpu(d->buffer1),
++		dma_unmap_single(&dr->pdev->dev, le32_to_cpu(d->buffer1),
+ 			SFRAME_SIZE, dr->direction);
+ 		c = dr->pending[head];
+ 		WARN_ON(!c);
+@@ -1580,7 +1580,7 @@ wctc4xxp_cleanup_descriptor_ring(struct wctc4xxp_descriptor_ring *dr)
+ 	for (i = 0; i < dr->size; ++i) {
+ 		d = wctc4xxp_descriptor(dr, i);
+ 		if (d->buffer1) {
+-			pci_unmap_single(dr->pdev, d->buffer1,
++			dma_unmap_single(&dr->pdev->dev, d->buffer1,
+ 				SFRAME_SIZE, dr->direction);
+ 			d->buffer1 = 0;
+ 			/* Commands will also be sitting on the waiting for
+@@ -1594,7 +1594,7 @@ wctc4xxp_cleanup_descriptor_ring(struct wctc4xxp_descriptor_ring *dr)
+ 	dr->head = 0;
+ 	dr->tail = 0;
+ 	dr->count = 0;
+-	pci_free_consistent(dr->pdev, (sizeof(*d)+dr->padding) * dr->size,
++	dma_free_coherent(&dr->pdev->dev, (sizeof(*d)+dr->padding) * dr->size,
+ 		dr->desc, dr->desc_dma);
+ 	kfree(dr->pending);
+ }
+@@ -1946,7 +1946,7 @@ wctc4xxp_operation_allocate(struct dahdi_transcoder_channel *dtc)
+ 
+ 	if (test_bit(DTE_SHUTDOWN, &wc->flags)) {
+ 		res = -EIO;
+-		if (wctc4xxp_need_firmware_reload(wc)) 
++		if (wctc4xxp_need_firmware_reload(wc))
+ 			res = wctc4xxp_reload_firmware(wc);
+ 	} else if (wctc4xxp_need_firmware_reload(wc)) {
+ 		res = wctc4xxp_reload_firmware(wc);
+@@ -2022,7 +2022,7 @@ wctc4xxp_operation_release(struct dahdi_transcoder_channel *dtc)
+ 		 * state of all the channels. Therefore we do not want to
+ 		 * process any of the channel release logic even if the firmware
+ 		 * was reloaded successfully. */
+-		if (wctc4xxp_need_firmware_reload(wc)) 
++		if (wctc4xxp_need_firmware_reload(wc))
+ 			wctc4xxp_reload_firmware(wc);
+ 		res = -EIO;
+ 	} else if (wctc4xxp_need_firmware_reload(wc)) {
+@@ -3945,7 +3945,7 @@ wctc4xxp_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
+ 	INIT_WORK(&wc->deferred_work, deferred_work_func);
+ 	init_waitqueue_head(&wc->waitq);
+ 
+-	if (pci_set_dma_mask(wc->pdev, DMA_BIT_MASK(32))) {
++	if (dma_set_mask(&wc->pdev->dev, DMA_BIT_MASK(32))) {
+ 		release_mem_region(pci_resource_start(wc->pdev, 1),
+ 			pci_resource_len(wc->pdev, 1));
+ 		if (wc->iobase)
+-- 
+2.39.1
+

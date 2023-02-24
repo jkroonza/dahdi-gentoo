@@ -1600,8 +1600,8 @@ static int __devinit openpci_probe_board(struct pci_dev *pdev,
 		goto hell_3;
 	}
 
-	wc->writechunk = pci_alloc_consistent(pdev, VT_PCIDMA_BLOCKSIZE,
-			&wc->writedma);
+	wc->writechunk = dma_alloc_coherent(&pdev->dev, VT_PCIDMA_BLOCKSIZE,
+			&wc->writedma, GFP_ATOMIC);
 	if (!wc->writechunk) {
 		cardcrit(boardnum, "Couldnt get DMA memory.");
 		goto hell_3;
@@ -1697,7 +1697,7 @@ hell_5:
 	dahdi_unregister_device(wc->ddev);
 hell_4:
 	if (wc->writechunk)
-		pci_free_consistent(pdev, VT_PCIDMA_BLOCKSIZE,
+		dma_free_coherent(&pdev->dev, VT_PCIDMA_BLOCKSIZE,
 				    (void *)wc->writechunk, wc->writedma);
 hell_3:
 	outb(0x00, TJ_CNTL);
@@ -1733,7 +1733,7 @@ static void __devexit openpci_remove_board(struct pci_dev *pdev)
 	dahdi_unregister_device(wc->ddev);
 	outb(0x00, TJ_CNTL);
 
-	pci_free_consistent(pdev, VT_PCIDMA_BLOCKSIZE,
+	dma_free_coherent(&pdev->dev, VT_PCIDMA_BLOCKSIZE,
 			(void *)wc->writechunk, wc->writedma);
 	free_irq(pdev->irq, wc);
 

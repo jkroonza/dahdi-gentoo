@@ -3680,7 +3680,7 @@ static int t4_allocate_buffers(struct t4 *wc, int numbufs, volatile unsigned int
 
 	alloc =
 		/* 32 channels, Double-buffer, Read/Write, 4 spans */
-		(unsigned int *)pci_alloc_consistent(wc->dev, numbufs * T4_BASE_SIZE * 2, &writedma);
+		(unsigned int *)dma_alloc_coherent(&wc->dev->dev, numbufs * T4_BASE_SIZE * 2, &writedma, GFP_ATOMIC);
 
 	if (!alloc) {
 		dev_notice(&wc->dev->dev, "wct%dxxp: Unable to allocate "
@@ -3755,7 +3755,7 @@ static void t4_increase_latency(struct t4 *wc, int newlatency)
 
 	spin_unlock_irqrestore(&wc->reglock, flags);
 
-	pci_free_consistent(wc->dev, T4_BASE_SIZE * oldbufs * 2, (void *)oldalloc, oldaddr);
+	dma_free_coherent(&wc->dev->dev, T4_BASE_SIZE * oldbufs * 2, (void *)oldalloc, oldaddr);
 
 	dev_info(&wc->dev->dev, "Increased latency to %d\n", newlatency);
 
@@ -4829,8 +4829,8 @@ static void __devexit t4_remove_one(struct pci_dev *pdev)
 	pci_release_regions(pdev);		
 	
 	/* Immediately free resources */
-	pci_free_consistent(pdev, T4_BASE_SIZE * wc->numbufs * 2, (void *)wc->writechunk, wc->writedma);
-	
+	dma_free_coherent(&pdev->dev, T4_BASE_SIZE * wc->numbufs * 2, (void *)wc->writechunk, wc->writedma);
+
 	order_index[wc->order]--;
 	
 	cards[wc->num] = NULL;

@@ -1331,13 +1331,13 @@ static int __devinit hfc_probe(struct pci_dev *pci_dev,
 	if (err)
 		goto err_pci_enable_device;
 
-	err = pci_set_dma_mask(pci_dev, PCI_DMA_32BIT);
+	err = dma_set_mask(&pci_dev->dev, PCI_DMA_32BIT);
 	if (err) {
 		printk(KERN_ERR hfc_DRIVER_PREFIX
 			"card %d: "
 			"No suitable DMA configuration available.\n",
 			card->cardnum);
-		goto err_pci_set_dma_mask;
+		goto err_dma_set_mask;
 	}
 
 	pci_write_config_word(pci_dev, PCI_COMMAND, PCI_COMMAND_MEMORY);
@@ -1381,12 +1381,8 @@ static int __devinit hfc_probe(struct pci_dev *pci_dev,
 		goto err_ioremap;
 	}
 
-	/*
-	 * pci_alloc_consistent guarantees alignment
-	 * (Documentation/DMA-mapping.txt)
-	 */
-	card->fifo_mem = pci_alloc_consistent(pci_dev,
-			hfc_FIFO_SIZE, &card->fifo_bus_mem);
+	card->fifo_mem = dma_alloc_coherent(&pci_dev->dev,
+			hfc_FIFO_SIZE, &card->fifo_bus_mem, GFP_ATOMIC);
 	if (!card->fifo_mem) {
 		printk(KERN_CRIT hfc_DRIVER_PREFIX
 			"card %d: "
@@ -1590,7 +1586,7 @@ static int __devinit hfc_probe(struct pci_dev *pci_dev,
 	return 0;
 
 err_request_irq:
-	pci_free_consistent(pci_dev, hfc_FIFO_SIZE,
+	dma_free_coherent(&pci_dev->dev, hfc_FIFO_SIZE,
 		card->fifo_mem, card->fifo_bus_mem);
 err_alloc_fifo:
 	iounmap(card->io_mem);
@@ -1599,7 +1595,7 @@ err_noiobase:
 err_noirq:
 	pci_release_regions(pci_dev);
 err_pci_request_regions:
-err_pci_set_dma_mask:
+err_dma_set_mask:
 err_pci_enable_device:
 	kfree(card);
 err_alloc_hfccard:
@@ -1635,7 +1631,7 @@ static void __devexit hfc_remove(struct pci_dev *pci_dev)
 
 	free_irq(pci_dev->irq, card);
 
-	pci_free_consistent(pci_dev, hfc_FIFO_SIZE,
+	dma_free_coherent(&pci_dev->dev, hfc_FIFO_SIZE,
 		card->fifo_mem, card->fifo_bus_mem);
 
 	iounmap(card->io_mem);
