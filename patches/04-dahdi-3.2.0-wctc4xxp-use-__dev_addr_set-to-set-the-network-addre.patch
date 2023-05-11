@@ -1,0 +1,44 @@
+From 3a146ccfe81ab0414944b12fb0d93567749eefd3 Mon Sep 17 00:00:00 2001
+From: Jaco Kroon <jaco@uls.co.za>
+Date: Thu, 11 May 2023 15:04:54 +0200
+Subject: [PATCH] wctc4xxp: use __dev_addr_set to set the network address
+ rather than memcpy.
+
+---
+ drivers/dahdi/wctc4xxp/base.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/dahdi/wctc4xxp/base.c b/drivers/dahdi/wctc4xxp/base.c
+index ec6fc43..15458fa 100644
+--- a/drivers/dahdi/wctc4xxp/base.c
++++ b/drivers/dahdi/wctc4xxp/base.c
+@@ -643,7 +643,7 @@ wctc4xxp_net_register(struct wcdte *wc)
+ 		return -ENOMEM;
+ 	priv = netdev_priv(netdev);
+ 	priv->wc = wc;
+-	memcpy(netdev->dev_addr, our_mac, sizeof(our_mac));
++	__dev_addr_set(netdev, our_mac, sizeof(our_mac));
+ 
+ #	ifdef HAVE_NET_DEVICE_OPS
+ 	netdev->netdev_ops = &wctc4xxp_netdev_ops;
+@@ -1946,7 +1946,7 @@ wctc4xxp_operation_allocate(struct dahdi_transcoder_channel *dtc)
+ 
+ 	if (test_bit(DTE_SHUTDOWN, &wc->flags)) {
+ 		res = -EIO;
+-		if (wctc4xxp_need_firmware_reload(wc)) 
++		if (wctc4xxp_need_firmware_reload(wc))
+ 			res = wctc4xxp_reload_firmware(wc);
+ 	} else if (wctc4xxp_need_firmware_reload(wc)) {
+ 		res = wctc4xxp_reload_firmware(wc);
+@@ -2022,7 +2022,7 @@ wctc4xxp_operation_release(struct dahdi_transcoder_channel *dtc)
+ 		 * state of all the channels. Therefore we do not want to
+ 		 * process any of the channel release logic even if the firmware
+ 		 * was reloaded successfully. */
+-		if (wctc4xxp_need_firmware_reload(wc)) 
++		if (wctc4xxp_need_firmware_reload(wc))
+ 			wctc4xxp_reload_firmware(wc);
+ 		res = -EIO;
+ 	} else if (wctc4xxp_need_firmware_reload(wc)) {
+-- 
+2.39.3
+
